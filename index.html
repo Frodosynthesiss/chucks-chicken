@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#D35400">
+    <title>Chuck's Chicken - Employee Portal</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Sign In Screen -->
+    <div id="signInScreen" class="sign-in-screen">
+        <div class="sign-in-container">
+            <div class="sign-in-content">
+                <div class="brand">
+                    <div class="brand-icon">🐔</div>
+                    <h1>Chuck's Chicken</h1>
+                    <p>Employee Portal</p>
+                </div>
+                <button id="signInBtn" class="sign-in-btn">
+                    <svg width="20" height="20" viewBox="0 0 20 20">
+                        <path fill="#4285F4" d="M19.6 10.23c0-.82-.1-1.42-.25-2.05H10v3.72h5.5c-.15.96-.74 2.31-2.04 3.22v2.45h3.16c1.89-1.73 2.98-4.3 2.98-7.34z"/>
+                        <path fill="#34A853" d="M13.46 15.13c-.83.59-1.96 1-3.46 1-2.64 0-4.88-1.74-5.68-4.15H1.07v2.52C2.72 17.75 6.09 20 10 20c2.7 0 4.96-.89 6.62-2.42l-3.16-2.45z"/>
+                        <path fill="#FBBC05" d="M3.99 10c0-.69.12-1.35.32-1.97V5.51H1.07A9.973 9.973 0 000 10c0 1.61.39 3.14 1.07 4.49l3.24-2.52c-.2-.62-.32-1.28-.32-1.97z"/>
+                        <path fill="#EA4335" d="M10 3.88c1.88 0 3.13.81 3.85 1.48l2.84-2.76C14.96.99 12.7 0 10 0 6.09 0 2.72 2.25 1.07 5.51l3.24 2.52C5.12 5.62 7.36 3.88 10 3.88z"/>
+                    </svg>
+                    <span>Clock In with Google</span>
+                </button>
+                <div class="sign-in-footer">
+                    <small>🍗 "If it ain't Chuck's, it ain't cluckin' good!" 🍗</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main App -->
+    <div id="app" class="app-container" style="display: none;">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="header-content">
+                <div class="header-brand">
+                    <span class="header-icon">🐔</span>
+                    <h1>Chuck's Chicken</h1>
+                </div>
+                <div class="header-user">
+                    <span id="userRole" class="user-role"></span>
+                    <button id="signOutBtn" class="sign-out-btn" aria-label="Sign out">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                            <polyline points="16 17 21 12 16 7"/>
+                            <line x1="21" y1="12" x2="9" y2="12"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Toast Container -->
+        <div id="toastContainer" class="toast-container"></div>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Schedule Tab -->
+            <div id="scheduleTab" class="tab-pane active">
+                <div class="tab-header">
+                    <h2>🗓️ Your Shifts</h2>
+                    <p class="tab-subtitle">This week at Chuck's</p>
+                </div>
+                
+                <div id="managerShiftControls" class="manager-controls" style="display: none;">
+                    <button id="addShiftBtn" class="primary-btn">+ Add Shift</button>
+                </div>
+                
+                <div id="shiftForm" class="form-card" style="display: none;">
+                    <h3>Add Shift</h3>
+                    <div class="form-group">
+                        <label>Date</label>
+                        <input type="date" id="shiftDate" class="form-input">
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Start Time</label>
+                            <input type="time" id="shiftStart" class="form-input">
+                        </div>
+                        <div class="form-group">
+                            <label>End Time</label>
+                            <input type="time" id="shiftEnd" class="form-input">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Notes (optional)</label>
+                        <input type="text" id="shiftNotes" class="form-input" placeholder="e.g., Opening shift, training...">
+                    </div>
+                    <div class="form-actions">
+                        <button class="secondary-btn" id="cancelShiftBtn">Cancel</button>
+                        <button class="primary-btn" id="saveShiftBtn">Save Shift</button>
+                    </div>
+                </div>
+                
+                <div id="shiftsList" class="shifts-list"></div>
+            </div>
+
+            <!-- Hours Tab -->
+            <div id="hoursTab" class="tab-pane">
+                <div class="tab-header">
+                    <h2>⏱️ Hours</h2>
+                    <p class="tab-subtitle">Log your time</p>
+                </div>
+                
+                <div class="form-card">
+                    <h3>Submit Hours</h3>
+                    <div class="form-group">
+                        <label>Date</label>
+                        <input type="date" id="hoursDate" class="form-input">
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Hours Worked</label>
+                            <input type="number" id="hoursWorked" class="form-input" step="0.5" min="0" max="24" placeholder="e.g., 8">
+                        </div>
+                        <div class="form-group">
+                            <label>Type</label>
+                            <select id="hoursType" class="form-input">
+                                <option value="regular">Regular</option>
+                                <option value="overtime">Overtime</option>
+                                <option value="holiday">Holiday</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Notes (optional)</label>
+                        <input type="text" id="hoursNotes" class="form-input" placeholder="Any details...">
+                    </div>
+                    <button class="primary-btn full-width" id="submitHoursBtn">Submit Hours</button>
+                </div>
+                
+                <h3 class="section-title">Submitted Hours</h3>
+                <div id="hoursList" class="hours-list"></div>
+            </div>
+
+            <!-- Time Off Tab -->
+            <div id="timeOffTab" class="tab-pane">
+                <div class="tab-header">
+                    <h2>🏖️ Time Off</h2>
+                    <p class="tab-subtitle">Request days off</p>
+                </div>
+                
+                <div class="form-card">
+                    <h3>New Request</h3>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Start Date</label>
+                            <input type="date" id="timeOffStart" class="form-input">
+                        </div>
+                        <div class="form-group">
+                            <label>End Date</label>
+                            <input type="date" id="timeOffEnd" class="form-input">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Reason</label>
+                        <input type="text" id="timeOffReason" class="form-input" placeholder="e.g., Family event, appointment...">
+                    </div>
+                    <button class="primary-btn full-width" id="submitTimeOffBtn">Submit Request</button>
+                </div>
+                
+                <h3 class="section-title">Your Requests</h3>
+                <div id="timeOffList" class="time-off-list"></div>
+            </div>
+
+            <!-- Chores Tab -->
+            <div id="choresTab" class="tab-pane">
+                <div class="tab-header">
+                    <h2>🧹 Chores</h2>
+                    <p class="tab-subtitle">Weekly duties</p>
+                </div>
+                
+                <div id="managerChoreControls" class="manager-controls" style="display: none;">
+                    <button id="addChoreBtn" class="primary-btn">+ Add Chore</button>
+                    <button id="resetChoresBtn" class="secondary-btn">Reset Week</button>
+                </div>
+                
+                <div id="choreForm" class="form-card" style="display: none;">
+                    <h3>Add Chore</h3>
+                    <div class="form-group">
+                        <label>Chore</label>
+                        <input type="text" id="choreTitle" class="form-input" placeholder="e.g., Take out trash...">
+                    </div>
+                    <div class="form-group">
+                        <label>Frequency</label>
+                        <select id="choreFrequency" class="form-input">
+                            <option value="daily">Daily</option>
+                            <option value="weekly">Weekly</option>
+                            <option value="asNeeded">As Needed</option>
+                        </select>
+                    </div>
+                    <div class="form-actions">
+                        <button class="secondary-btn" id="cancelChoreBtn">Cancel</button>
+                        <button class="primary-btn" id="saveChoreBtn">Save Chore</button>
+                    </div>
+                </div>
+                
+                <div id="choresList" class="chores-list"></div>
+            </div>
+
+            <!-- Notes Tab -->
+            <div id="notesTab" class="tab-pane">
+                <div class="tab-header">
+                    <h2>📋 Notes</h2>
+                    <p class="tab-subtitle">Info & resources</p>
+                </div>
+                
+                <div id="managerNoteControls" class="manager-controls" style="display: none;">
+                    <button id="addNoteBtn" class="primary-btn">+ Add Note</button>
+                </div>
+                
+                <div id="noteForm" class="form-card" style="display: none;">
+                    <h3>Add Note</h3>
+                    <div class="form-group">
+                        <label>Title</label>
+                        <input type="text" id="noteTitle" class="form-input" placeholder="e.g., CPR Training Info">
+                    </div>
+                    <div class="form-group">
+                        <label>Content</label>
+                        <textarea id="noteContent" class="form-textarea" rows="4" placeholder="Details, links, instructions..."></textarea>
+                    </div>
+                    <div class="form-actions">
+                        <button class="secondary-btn" id="cancelNoteBtn">Cancel</button>
+                        <button class="primary-btn" id="saveNoteBtn">Save Note</button>
+                    </div>
+                </div>
+                
+                <div id="notesList" class="notes-list"></div>
+            </div>
+
+            <!-- Contract Tab -->
+            <div id="contractTab" class="tab-pane">
+                <div class="tab-header">
+                    <h2>📝 The Deal</h2>
+                    <p class="tab-subtitle">Monthly agreement</p>
+                </div>
+                
+                <div id="managerContractControls" class="manager-controls" style="display: none;">
+                    <button id="newContractBtn" class="primary-btn">+ New Contract</button>
+                </div>
+                
+                <div id="contractForm" class="form-card" style="display: none;">
+                    <h3>Create Monthly Contract</h3>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Month</label>
+                            <select id="contractMonth" class="form-input">
+                                <option value="1">January</option>
+                                <option value="2">February</option>
+                                <option value="3">March</option>
+                                <option value="4">April</option>
+                                <option value="5">May</option>
+                                <option value="6">June</option>
+                                <option value="7">July</option>
+                                <option value="8">August</option>
+                                <option value="9">September</option>
+                                <option value="10">October</option>
+                                <option value="11">November</option>
+                                <option value="12">December</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Year</label>
+                            <input type="number" id="contractYear" class="form-input" value="2026">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Hourly Rate ($)</label>
+                            <input type="number" id="contractRate" class="form-input" step="0.50" placeholder="e.g., 15.00">
+                        </div>
+                        <div class="form-group">
+                            <label>Expected Hours/Week</label>
+                            <input type="number" id="contractHours" class="form-input" placeholder="e.g., 20">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Primary Duties</label>
+                        <textarea id="contractDuties" class="form-textarea" rows="3" placeholder="List main responsibilities..."></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Additional Terms</label>
+                        <textarea id="contractTerms" class="form-textarea" rows="3" placeholder="Any other agreements, expectations..."></textarea>
+                    </div>
+                    <div class="form-actions">
+                        <button class="secondary-btn" id="cancelContractBtn">Cancel</button>
+                        <button class="primary-btn" id="saveContractBtn">Create Contract</button>
+                    </div>
+                </div>
+                
+                <div id="currentContract" class="contract-display"></div>
+                
+                <h3 class="section-title">Past Contracts</h3>
+                <div id="pastContracts" class="past-contracts"></div>
+            </div>
+        </main>
+
+        <!-- Bottom Navigation -->
+        <nav class="bottom-nav">
+            <button class="nav-item active" data-tab="schedule">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                    <line x1="16" y1="2" x2="16" y2="6"/>
+                    <line x1="8" y1="2" x2="8" y2="6"/>
+                    <line x1="3" y1="10" x2="21" y2="10"/>
+                </svg>
+                <span>Shifts</span>
+            </button>
+            <button class="nav-item" data-tab="hours">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"/>
+                    <polyline points="12 6 12 12 16 14"/>
+                </svg>
+                <span>Hours</span>
+            </button>
+            <button class="nav-item" data-tab="timeOff">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                    <circle cx="9" cy="7" r="4"/>
+                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                </svg>
+                <span>Time Off</span>
+            </button>
+            <button class="nav-item" data-tab="chores">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="9 11 12 14 22 4"/>
+                    <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+                </svg>
+                <span>Chores</span>
+            </button>
+            <button class="nav-item" data-tab="notes">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                    <polyline points="14 2 14 8 20 8"/>
+                    <line x1="16" y1="13" x2="8" y2="13"/>
+                    <line x1="16" y1="17" x2="8" y2="17"/>
+                </svg>
+                <span>Notes</span>
+            </button>
+            <button class="nav-item" data-tab="contract">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                </svg>
+                <span>Deal</span>
+            </button>
+        </nav>
+    </div>
+
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
