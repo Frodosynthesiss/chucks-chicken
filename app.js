@@ -16,8 +16,8 @@ const firebaseConfig = {
 let auth, db;
 let currentUser = null;
 
-// Manager email - UPDATE THIS to your email
-const MANAGER_EMAIL = 'kristynvp@gmail.com';
+// Manager emails - these accounts get admin access
+const MANAGER_EMAILS = ['kristyn.a.payne@gmail.com', 'jcvega805@gmail.com'];
 
 // Caregiver/Employee ID
 const EMPLOYEE_ID = 'kayden';
@@ -28,10 +28,14 @@ const state = {
     shifts: [],
     hours: [],
     timeOffRequests: [],
-    chores: [],
+    tasks: [],
     notes: [],
     contracts: [],
-    unsubscribers: []
+    unsubscribers: [],
+    // Calendar state
+    calendarView: 'week', // 'week' or 'month'
+    currentDate: new Date(),
+    editingShiftId: null
 };
 
 // Utility Functions
@@ -86,6 +90,85 @@ const utils = {
         const urlRegex = /(https?:\/\/[^\s<]+)/g;
         const escaped = text.replace(/</g, '&lt;').replace(/>/g, '&gt;');
         return escaped.replace(urlRegex, '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>');
+    },
+    
+    formatTimeShort(time) {
+        if (!time) return '';
+        const [hours, minutes] = time.split(':');
+        const h = parseInt(hours);
+        const ampm = h >= 12 ? 'p' : 'a';
+        const displayHour = h === 0 ? 12 : h > 12 ? h - 12 : h;
+        return `${displayHour}${minutes !== '00' ? ':' + minutes : ''}${ampm}`;
+    },
+    
+    dateToString(date) {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    },
+    
+    getWeekDates(date) {
+        const d = new Date(date);
+        const day = d.getDay();
+        const diff = d.getDate() - day;
+        const weekStart = new Date(d.setDate(diff));
+        
+        const dates = [];
+        for (let i = 0; i < 7; i++) {
+            const current = new Date(weekStart);
+            current.setDate(weekStart.getDate() + i);
+            dates.push(current);
+        }
+        return dates;
+    },
+    
+    getMonthDates(date) {
+        const year = date.getFullYear();
+        const month = date.getMonth();
+        
+        const firstDay = new Date(year, month, 1);
+        const lastDay = new Date(year, month + 1, 0);
+        
+        const dates = [];
+        
+        // Days from previous month
+        const startPadding = firstDay.getDay();
+        for (let i = startPadding - 1; i >= 0; i--) {
+            const d = new Date(year, month, -i);
+            dates.push({ date: d, otherMonth: true });
+        }
+        
+        // Days of current month
+        for (let i = 1; i <= lastDay.getDate(); i++) {
+            dates.push({ date: new Date(year, month, i), otherMonth: false });
+        }
+        
+        // Days from next month
+        const endPadding = 6 - lastDay.getDay();
+        for (let i = 1; i <= endPadding; i++) {
+            dates.push({ date: new Date(year, month + 1, i), otherMonth: true });
+        }
+        
+        return dates;
+    },
+    
+    getWeekLabel(date) {
+        const dates = this.getWeekDates(date);
+        const start = dates[0];
+        const end = dates[6];
+        const startMonth = start.toLocaleDateString('en-US', { month: 'short' });
+        const endMonth = end.toLocaleDateString('en-US', { month: 'short' });
+        
+        if (startMonth === endMonth) {
+            return `${startMonth} ${start.getDate()} - ${end.getDate()}, ${start.getFullYear()}`;
+        } else {
+            return `${startMonth} ${start.getDate()} - ${endMonth} ${end.getDate()}, ${end.getFullYear()}`;
+        }
+    },
+    
+    getMonthLabel(date) {
+        return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
     }
 };
 
@@ -111,6 +194,14 @@ const db_ops = {
     async deleteShift(id) {
         await db.collection('caregivers').doc(EMPLOYEE_ID)
             .collection('shifts').doc(id).delete();
+    },
+    
+    async updateShift(id, data) {
+        await db.collection('caregivers').doc(EMPLOYEE_ID)
+            .collection('shifts').doc(id).update({
+                ...data,
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
     },
     
     listenToShifts(callback) {
@@ -173,29 +264,29 @@ const db_ops = {
             });
     },
     
-    // Chores
-    async addChore(data) {
+    // Tasks (formerly Chores)
+    async addTask(data) {
         return await db.collection('caregivers').doc(EMPLOYEE_ID)
-            .collection('chores').add({
+            .collection('tasks').add({
                 ...data,
                 completed: false,
                 createdAt: firebase.firestore.FieldValue.serverTimestamp()
             });
     },
     
-    async updateChore(id, data) {
+    async updateTask(id, data) {
         await db.collection('caregivers').doc(EMPLOYEE_ID)
-            .collection('chores').doc(id).update(data);
+            .collection('tasks').doc(id).update(data);
     },
     
-    async deleteChore(id) {
+    async deleteTask(id) {
         await db.collection('caregivers').doc(EMPLOYEE_ID)
-            .collection('chores').doc(id).delete();
+            .collection('tasks').doc(id).delete();
     },
     
-    async resetChores() {
+    async resetTasks() {
         const snapshot = await db.collection('caregivers').doc(EMPLOYEE_ID)
-            .collection('chores').get();
+            .collection('tasks').get();
         const batch = db.batch();
         snapshot.docs.forEach(doc => {
             batch.update(doc.ref, { completed: false });
@@ -203,13 +294,13 @@ const db_ops = {
         await batch.commit();
     },
     
-    listenToChores(callback) {
+    listenToTasks(callback) {
         return db.collection('caregivers').doc(EMPLOYEE_ID)
-            .collection('chores')
+            .collection('tasks')
             .orderBy('createdAt', 'asc')
             .onSnapshot(snapshot => {
-                const chores = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                callback(chores);
+                const tasks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                callback(tasks);
             });
     },
     
@@ -279,35 +370,84 @@ const db_ops = {
 
 // UI Rendering
 const ui = {
-    renderShifts(shifts) {
-        const container = document.getElementById('shiftsList');
+    renderCalendar() {
+        const container = document.getElementById('calendarView');
+        const label = document.getElementById('periodLabel');
         
-        // Filter to upcoming shifts (today and future)
+        if (state.calendarView === 'week') {
+            label.textContent = utils.getWeekLabel(state.currentDate);
+            this.renderWeekView(container);
+        } else {
+            label.textContent = utils.getMonthLabel(state.currentDate);
+            this.renderMonthView(container);
+        }
+    },
+    
+    renderWeekView(container) {
+        const dates = utils.getWeekDates(state.currentDate);
         const today = utils.getTodayString();
-        const upcomingShifts = shifts.filter(s => s.date >= today);
+        const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
         
-        if (upcomingShifts.length === 0) {
-            container.innerHTML = `
-                <div class="empty-state">
-                    <div class="empty-state-icon">📅</div>
-                    <div class="empty-state-text">No upcoming shifts scheduled</div>
+        let html = '<div class="week-view">';
+        
+        dates.forEach((date, i) => {
+            const dateStr = utils.dateToString(date);
+            const isToday = dateStr === today;
+            const dayShifts = state.shifts.filter(s => s.date === dateStr);
+            
+            html += `
+                <div class="week-day">
+                    <div class="day-label ${isToday ? 'today' : ''}">
+                        ${dayNames[i]}
+                        <span class="day-date">${date.getDate()}</span>
+                    </div>
+                    <div class="day-shifts" data-date="${dateStr}">
+                        ${dayShifts.length > 0 ? dayShifts.map(s => `
+                            <span class="shift-pill" data-id="${s.id}" data-action="editShift">
+                                ${utils.formatTimeShort(s.startTime)}-${utils.formatTimeShort(s.endTime)}
+                            </span>
+                        `).join('') : '<span class="no-shifts">—</span>'}
+                    </div>
                 </div>
             `;
-            return;
-        }
+        });
         
-        container.innerHTML = upcomingShifts.map(shift => `
-            <div class="shift-card" data-id="${shift.id}">
-                <div class="shift-date">${utils.formatDate(shift.date)}</div>
-                <div class="shift-time">${utils.formatTime(shift.startTime)} - ${utils.formatTime(shift.endTime)}</div>
-                ${shift.notes ? `<div class="shift-notes">${shift.notes}</div>` : ''}
-                ${state.isManager ? `
-                    <div class="manager-actions">
-                        <button class="action-btn delete" data-action="deleteShift" data-id="${shift.id}">Delete</button>
-                    </div>
-                ` : ''}
-            </div>
-        `).join('');
+        html += '</div>';
+        container.innerHTML = html;
+    },
+    
+    renderMonthView(container) {
+        const dates = utils.getMonthDates(state.currentDate);
+        const today = utils.getTodayString();
+        const dayNames = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+        
+        let html = '<div class="month-view">';
+        
+        // Header row
+        dayNames.forEach(name => {
+            html += `<div class="month-header">${name}</div>`;
+        });
+        
+        // Date cells
+        dates.forEach(({ date, otherMonth }) => {
+            const dateStr = utils.dateToString(date);
+            const isToday = dateStr === today;
+            const dayShifts = state.shifts.filter(s => s.date === dateStr);
+            
+            html += `
+                <div class="month-day ${otherMonth ? 'other-month' : ''} ${isToday ? 'today' : ''}" data-date="${dateStr}">
+                    <div class="month-day-num">${date.getDate()}</div>
+                    ${dayShifts.map(s => `
+                        <div class="month-shift" data-id="${s.id}" data-action="editShift">
+                            ${utils.formatTimeShort(s.startTime)}
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        });
+        
+        html += '</div>';
+        container.innerHTML = html;
     },
     
     renderHours(hours) {
@@ -357,28 +497,28 @@ const ui = {
         `).join('');
     },
     
-    renderChores(chores) {
-        const container = document.getElementById('choresList');
+    renderTasks(tasks) {
+        const container = document.getElementById('tasksList');
         
-        if (chores.length === 0) {
+        if (tasks.length === 0) {
             container.innerHTML = `
                 <div class="empty-state">
                     <div class="empty-state-icon">✨</div>
-                    <div class="empty-state-text">No chores assigned</div>
+                    <div class="empty-state-text">No tasks assigned</div>
                 </div>
             `;
             return;
         }
         
-        container.innerHTML = chores.map(chore => `
-            <div class="chore-card ${chore.completed ? 'completed' : ''}" data-id="${chore.id}">
-                <input type="checkbox" class="chore-checkbox" data-id="${chore.id}" ${chore.completed ? 'checked' : ''}>
-                <div class="chore-info">
-                    <div class="chore-title">${chore.title}</div>
-                    <div class="chore-frequency">${chore.frequency}</div>
+        container.innerHTML = tasks.map(task => `
+            <div class="task-card ${task.completed ? 'completed' : ''}" data-id="${task.id}">
+                <input type="checkbox" class="task-checkbox" data-id="${task.id}" ${task.completed ? 'checked' : ''}>
+                <div class="task-info">
+                    <div class="task-title">${task.title}</div>
+                    <div class="task-frequency">${task.frequency}</div>
                 </div>
                 ${state.isManager ? `
-                    <button class="action-btn delete" data-action="deleteChore" data-id="${chore.id}" style="flex: 0;">×</button>
+                    <button class="action-btn delete" data-action="deleteTask" data-id="${task.id}" style="flex: 0;">×</button>
                 ` : ''}
             </div>
         `).join('');
@@ -526,14 +666,49 @@ function setupEventHandlers() {
         auth.signOut();
     });
     
+    // === CALENDAR VIEW TOGGLE ===
+    document.querySelectorAll('.view-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            state.calendarView = btn.dataset.view;
+            ui.renderCalendar();
+        });
+    });
+    
+    // Calendar navigation
+    document.getElementById('prevPeriod').addEventListener('click', () => {
+        if (state.calendarView === 'week') {
+            state.currentDate.setDate(state.currentDate.getDate() - 7);
+        } else {
+            state.currentDate.setMonth(state.currentDate.getMonth() - 1);
+        }
+        ui.renderCalendar();
+    });
+    
+    document.getElementById('nextPeriod').addEventListener('click', () => {
+        if (state.calendarView === 'week') {
+            state.currentDate.setDate(state.currentDate.getDate() + 7);
+        } else {
+            state.currentDate.setMonth(state.currentDate.getMonth() + 1);
+        }
+        ui.renderCalendar();
+    });
+    
     // === SHIFTS ===
-    document.getElementById('addShiftBtn')?.addEventListener('click', () => {
+    document.getElementById('addShiftBtn').addEventListener('click', () => {
+        state.editingShiftId = null;
+        document.getElementById('shiftFormTitle').textContent = 'Add Shift';
         document.getElementById('shiftForm').style.display = 'block';
         document.getElementById('shiftDate').value = utils.getTodayString();
+        document.getElementById('shiftStart').value = '';
+        document.getElementById('shiftEnd').value = '';
+        document.getElementById('shiftNotes').value = '';
     });
     
     document.getElementById('cancelShiftBtn').addEventListener('click', () => {
         document.getElementById('shiftForm').style.display = 'none';
+        state.editingShiftId = null;
     });
     
     document.getElementById('saveShiftBtn').addEventListener('click', async () => {
@@ -547,10 +722,34 @@ function setupEventHandlers() {
             return;
         }
         
-        await db_ops.addShift({ date, startTime, endTime, notes });
+        if (state.editingShiftId) {
+            await db_ops.updateShift(state.editingShiftId, { date, startTime, endTime, notes });
+            utils.showToast('Shift updated! 🐔', 'success');
+        } else {
+            await db_ops.addShift({ date, startTime, endTime, notes });
+            utils.showToast('Shift added! 🐔', 'success');
+        }
+        
         document.getElementById('shiftForm').style.display = 'none';
-        document.getElementById('shiftNotes').value = '';
-        utils.showToast('Shift added! 🐔', 'success');
+        state.editingShiftId = null;
+    });
+    
+    // Click on shift to edit
+    document.getElementById('calendarView').addEventListener('click', (e) => {
+        const shiftEl = e.target.closest('[data-action="editShift"]');
+        if (shiftEl) {
+            const id = shiftEl.dataset.id;
+            const shift = state.shifts.find(s => s.id === id);
+            if (shift) {
+                state.editingShiftId = id;
+                document.getElementById('shiftFormTitle').textContent = 'Edit Shift';
+                document.getElementById('shiftForm').style.display = 'block';
+                document.getElementById('shiftDate').value = shift.date;
+                document.getElementById('shiftStart').value = shift.startTime;
+                document.getElementById('shiftEnd').value = shift.endTime;
+                document.getElementById('shiftNotes').value = shift.notes || '';
+            }
+        }
     });
     
     // === HOURS ===
@@ -591,42 +790,42 @@ function setupEventHandlers() {
         utils.showToast('Request submitted! 🏖️', 'success');
     });
     
-    // === CHORES ===
-    document.getElementById('addChoreBtn')?.addEventListener('click', () => {
-        document.getElementById('choreForm').style.display = 'block';
+    // === TASKS ===
+    document.getElementById('addTaskBtn')?.addEventListener('click', () => {
+        document.getElementById('taskForm').style.display = 'block';
     });
     
-    document.getElementById('cancelChoreBtn').addEventListener('click', () => {
-        document.getElementById('choreForm').style.display = 'none';
+    document.getElementById('cancelTaskBtn').addEventListener('click', () => {
+        document.getElementById('taskForm').style.display = 'none';
     });
     
-    document.getElementById('saveChoreBtn').addEventListener('click', async () => {
-        const title = document.getElementById('choreTitle').value.trim();
-        const frequency = document.getElementById('choreFrequency').value;
+    document.getElementById('saveTaskBtn').addEventListener('click', async () => {
+        const title = document.getElementById('taskTitle').value.trim();
+        const frequency = document.getElementById('taskFrequency').value;
         
         if (!title) {
-            utils.showToast('Please enter a chore', 'error');
+            utils.showToast('Please enter a task', 'error');
             return;
         }
         
-        await db_ops.addChore({ title, frequency });
-        document.getElementById('choreForm').style.display = 'none';
-        document.getElementById('choreTitle').value = '';
-        utils.showToast('Chore added! 🧹', 'success');
+        await db_ops.addTask({ title, frequency });
+        document.getElementById('taskForm').style.display = 'none';
+        document.getElementById('taskTitle').value = '';
+        utils.showToast('Task added! ✓', 'success');
     });
     
-    document.getElementById('resetChoresBtn')?.addEventListener('click', async () => {
-        if (confirm('Reset all chores to incomplete?')) {
-            await db_ops.resetChores();
-            utils.showToast('Chores reset for the week!', 'success');
+    document.getElementById('resetTasksBtn')?.addEventListener('click', async () => {
+        if (confirm('Reset all tasks to incomplete?')) {
+            await db_ops.resetTasks();
+            utils.showToast('Tasks reset for the week!', 'success');
         }
     });
     
-    // Chore checkbox
-    document.getElementById('choresList').addEventListener('change', async (e) => {
-        if (e.target.classList.contains('chore-checkbox')) {
+    // Task checkbox
+    document.getElementById('tasksList').addEventListener('change', async (e) => {
+        if (e.target.classList.contains('task-checkbox')) {
             const id = e.target.dataset.id;
-            await db_ops.updateChore(id, { completed: e.target.checked });
+            await db_ops.updateTask(id, { completed: e.target.checked });
         }
     });
     
@@ -716,9 +915,9 @@ function setupEventHandlers() {
                 await db_ops.updateTimeOffStatus(id, 'denied');
                 utils.showToast('Time off denied', 'warning');
                 break;
-            case 'deleteChore':
-                await db_ops.deleteChore(id);
-                utils.showToast('Chore removed', 'success');
+            case 'deleteTask':
+                await db_ops.deleteTask(id);
+                utils.showToast('Task removed', 'success');
                 break;
             case 'deleteNote':
                 if (confirm('Delete this note?')) {
@@ -744,15 +943,14 @@ document.addEventListener('DOMContentLoaded', () => {
     auth.onAuthStateChanged(async (user) => {
         if (user) {
             currentUser = user;
-            state.isManager = user.email === MANAGER_EMAIL;
+            state.isManager = MANAGER_EMAILS.includes(user.email);
             
             // Update UI for role
             document.getElementById('userRole').textContent = state.isManager ? '👔 Manager' : '🐔 Team';
             
             // Show/hide manager controls
             if (state.isManager) {
-                document.getElementById('managerShiftControls').style.display = 'block';
-                document.getElementById('managerChoreControls').style.display = 'block';
+                document.getElementById('managerTaskControls').style.display = 'block';
                 document.getElementById('managerNoteControls').style.display = 'block';
                 document.getElementById('managerContractControls').style.display = 'block';
             }
@@ -764,7 +962,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Setup listeners
             state.unsubscribers.push(db_ops.listenToShifts(shifts => {
                 state.shifts = shifts;
-                ui.renderShifts(shifts);
+                ui.renderCalendar();
             }));
             
             state.unsubscribers.push(db_ops.listenToHours(hours => {
@@ -777,9 +975,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 ui.renderTimeOff(requests);
             }));
             
-            state.unsubscribers.push(db_ops.listenToChores(chores => {
-                state.chores = chores;
-                ui.renderChores(chores);
+            state.unsubscribers.push(db_ops.listenToTasks(tasks => {
+                state.tasks = tasks;
+                ui.renderTasks(tasks);
             }));
             
             state.unsubscribers.push(db_ops.listenToNotes(notes => {

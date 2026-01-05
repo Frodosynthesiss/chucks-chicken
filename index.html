@@ -67,16 +67,23 @@
             <!-- Schedule Tab -->
             <div id="scheduleTab" class="tab-pane active">
                 <div class="tab-header">
-                    <h2>🗓️ Your Shifts</h2>
-                    <p class="tab-subtitle">This week at Chuck's</p>
+                    <h2>🗓️ Schedule</h2>
+                    <div class="view-toggle">
+                        <button class="view-btn active" data-view="week">Week</button>
+                        <button class="view-btn" data-view="month">Month</button>
+                    </div>
                 </div>
                 
-                <div id="managerShiftControls" class="manager-controls" style="display: none;">
-                    <button id="addShiftBtn" class="primary-btn">+ Add Shift</button>
+                <div class="schedule-controls">
+                    <button id="prevPeriod" class="nav-btn">‹</button>
+                    <span id="periodLabel" class="period-label"></span>
+                    <button id="nextPeriod" class="nav-btn">›</button>
+                    <button id="addShiftBtn" class="primary-btn add-shift-btn">+ Add</button>
                 </div>
                 
                 <div id="shiftForm" class="form-card" style="display: none;">
-                    <h3>Add Shift</h3>
+                    <h3 id="shiftFormTitle">Add Shift</h3>
+                    <input type="hidden" id="editingShiftId">
                     <div class="form-group">
                         <label>Date</label>
                         <input type="date" id="shiftDate" class="form-input">
@@ -97,11 +104,11 @@
                     </div>
                     <div class="form-actions">
                         <button class="secondary-btn" id="cancelShiftBtn">Cancel</button>
-                        <button class="primary-btn" id="saveShiftBtn">Save Shift</button>
+                        <button class="primary-btn" id="saveShiftBtn">Save</button>
                     </div>
                 </div>
                 
-                <div id="shiftsList" class="shifts-list"></div>
+                <div id="calendarView" class="calendar-view"></div>
             </div>
 
             <!-- Hours Tab -->
@@ -172,39 +179,39 @@
                 <div id="timeOffList" class="time-off-list"></div>
             </div>
 
-            <!-- Chores Tab -->
-            <div id="choresTab" class="tab-pane">
+            <!-- Tasks Tab -->
+            <div id="tasksTab" class="tab-pane">
                 <div class="tab-header">
-                    <h2>🧹 Chores</h2>
-                    <p class="tab-subtitle">Weekly duties</p>
+                    <h2>✓ Tasks</h2>
+                    <p class="tab-subtitle">Weekly to-dos</p>
                 </div>
                 
-                <div id="managerChoreControls" class="manager-controls" style="display: none;">
-                    <button id="addChoreBtn" class="primary-btn">+ Add Chore</button>
-                    <button id="resetChoresBtn" class="secondary-btn">Reset Week</button>
+                <div id="managerTaskControls" class="manager-controls" style="display: none;">
+                    <button id="addTaskBtn" class="primary-btn">+ Add Task</button>
+                    <button id="resetTasksBtn" class="secondary-btn">Reset Week</button>
                 </div>
                 
-                <div id="choreForm" class="form-card" style="display: none;">
-                    <h3>Add Chore</h3>
+                <div id="taskForm" class="form-card" style="display: none;">
+                    <h3>Add Task</h3>
                     <div class="form-group">
-                        <label>Chore</label>
-                        <input type="text" id="choreTitle" class="form-input" placeholder="e.g., Take out trash...">
+                        <label>Task</label>
+                        <input type="text" id="taskTitle" class="form-input" placeholder="e.g., Take out trash...">
                     </div>
                     <div class="form-group">
                         <label>Frequency</label>
-                        <select id="choreFrequency" class="form-input">
+                        <select id="taskFrequency" class="form-input">
                             <option value="daily">Daily</option>
                             <option value="weekly">Weekly</option>
                             <option value="asNeeded">As Needed</option>
                         </select>
                     </div>
                     <div class="form-actions">
-                        <button class="secondary-btn" id="cancelChoreBtn">Cancel</button>
-                        <button class="primary-btn" id="saveChoreBtn">Save Chore</button>
+                        <button class="secondary-btn" id="cancelTaskBtn">Cancel</button>
+                        <button class="primary-btn" id="saveTaskBtn">Save Task</button>
                     </div>
                 </div>
                 
-                <div id="choresList" class="chores-list"></div>
+                <div id="tasksList" class="tasks-list"></div>
             </div>
 
             <!-- Notes Tab -->
@@ -331,12 +338,12 @@
                 </svg>
                 <span>Time Off</span>
             </button>
-            <button class="nav-item" data-tab="chores">
+            <button class="nav-item" data-tab="tasks">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <polyline points="9 11 12 14 22 4"/>
                     <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
                 </svg>
-                <span>Chores</span>
+                <span>Tasks</span>
             </button>
             <button class="nav-item" data-tab="notes">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
