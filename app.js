@@ -109,15 +109,14 @@ const utils = {
     },
     
     getWeekDates(date) {
-        const d = new Date(date);
+        const d = new Date(date.getTime()); // Clone the date
         const day = d.getDay();
-        const diff = d.getDate() - day;
-        const weekStart = new Date(d.setDate(diff));
+        d.setDate(d.getDate() - day); // Go to Sunday
         
         const dates = [];
         for (let i = 0; i < 7; i++) {
-            const current = new Date(weekStart);
-            current.setDate(weekStart.getDate() + i);
+            const current = new Date(d.getTime());
+            current.setDate(d.getDate() + i);
             dates.push(current);
         }
         return dates;
@@ -155,6 +154,8 @@ const utils = {
     
     getWeekLabel(date) {
         const dates = this.getWeekDates(date);
+        if (!dates || dates.length < 7) return 'Week';
+        
         const start = dates[0];
         const end = dates[6];
         const startMonth = start.toLocaleDateString('en-US', { month: 'short' });
@@ -359,11 +360,13 @@ const db_ops = {
     listenToContracts(callback) {
         return db.collection('caregivers').doc(EMPLOYEE_ID)
             .collection('contracts')
-            .orderBy('year', 'desc')
-            .orderBy('month', 'desc')
+            .orderBy('createdAt', 'desc')
             .onSnapshot(snapshot => {
                 const contracts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 callback(contracts);
+            }, error => {
+                console.error('Error listening to contracts:', error);
+                callback([]);
             });
     }
 };
@@ -374,12 +377,22 @@ const ui = {
         const container = document.getElementById('calendarView');
         const label = document.getElementById('periodLabel');
         
-        if (state.calendarView === 'week') {
-            label.textContent = utils.getWeekLabel(state.currentDate);
-            this.renderWeekView(container);
-        } else {
-            label.textContent = utils.getMonthLabel(state.currentDate);
-            this.renderMonthView(container);
+        if (!container || !label) {
+            console.error('Calendar elements not found');
+            return;
+        }
+        
+        try {
+            if (state.calendarView === 'week') {
+                label.textContent = utils.getWeekLabel(state.currentDate);
+                this.renderWeekView(container);
+            } else {
+                label.textContent = utils.getMonthLabel(state.currentDate);
+                this.renderMonthView(container);
+            }
+        } catch (error) {
+            console.error('Error rendering calendar:', error);
+            container.innerHTML = '<div class="empty-state-text">Error loading calendar</div>';
         }
     },
     
