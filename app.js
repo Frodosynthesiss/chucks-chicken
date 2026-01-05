@@ -706,12 +706,12 @@ function setupEventHandlers() {
         document.getElementById('shiftNotes').value = '';
     });
     
-    document.getElementById('cancelShiftBtn').addEventListener('click', () => {
+    document.getElementById('cancelShiftBtn')?.addEventListener('click', () => {
         document.getElementById('shiftForm').style.display = 'none';
         state.editingShiftId = null;
     });
     
-    document.getElementById('saveShiftBtn').addEventListener('click', async () => {
+    document.getElementById('saveShiftBtn')?.addEventListener('click', async () => {
         const date = document.getElementById('shiftDate').value;
         const startTime = document.getElementById('shiftStart').value;
         const endTime = document.getElementById('shiftEnd').value;
@@ -722,16 +722,21 @@ function setupEventHandlers() {
             return;
         }
         
-        if (state.editingShiftId) {
-            await db_ops.updateShift(state.editingShiftId, { date, startTime, endTime, notes });
-            utils.showToast('Shift updated! 🐔', 'success');
-        } else {
-            await db_ops.addShift({ date, startTime, endTime, notes });
-            utils.showToast('Shift added! 🐔', 'success');
+        try {
+            if (state.editingShiftId) {
+                await db_ops.updateShift(state.editingShiftId, { date, startTime, endTime, notes });
+                utils.showToast('Shift updated! 🐔', 'success');
+            } else {
+                await db_ops.addShift({ date, startTime, endTime, notes });
+                utils.showToast('Shift added! 🐔', 'success');
+            }
+            
+            document.getElementById('shiftForm').style.display = 'none';
+            state.editingShiftId = null;
+        } catch (error) {
+            console.error('Error saving shift:', error);
+            utils.showToast('Failed to save shift: ' + error.message, 'error');
         }
-        
-        document.getElementById('shiftForm').style.display = 'none';
-        state.editingShiftId = null;
     });
     
     // Click on shift to edit
@@ -795,11 +800,11 @@ function setupEventHandlers() {
         document.getElementById('taskForm').style.display = 'block';
     });
     
-    document.getElementById('cancelTaskBtn').addEventListener('click', () => {
+    document.getElementById('cancelTaskBtn')?.addEventListener('click', () => {
         document.getElementById('taskForm').style.display = 'none';
     });
     
-    document.getElementById('saveTaskBtn').addEventListener('click', async () => {
+    document.getElementById('saveTaskBtn')?.addEventListener('click', async () => {
         const title = document.getElementById('taskTitle').value.trim();
         const frequency = document.getElementById('taskFrequency').value;
         
@@ -808,10 +813,15 @@ function setupEventHandlers() {
             return;
         }
         
-        await db_ops.addTask({ title, frequency });
-        document.getElementById('taskForm').style.display = 'none';
-        document.getElementById('taskTitle').value = '';
-        utils.showToast('Task added! ✓', 'success');
+        try {
+            await db_ops.addTask({ title, frequency });
+            document.getElementById('taskForm').style.display = 'none';
+            document.getElementById('taskTitle').value = '';
+            utils.showToast('Task added! ✓', 'success');
+        } catch (error) {
+            console.error('Error adding task:', error);
+            utils.showToast('Failed to add task: ' + error.message, 'error');
+        }
     });
     
     document.getElementById('resetTasksBtn')?.addEventListener('click', async () => {
